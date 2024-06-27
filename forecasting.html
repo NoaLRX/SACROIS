@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.555">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>forecasting</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="forecasting_files/libs/clipboard/clipboard.min.js"></script>
+<script src="forecasting_files/libs/quarto-html/quarto.js"></script>
+<script src="forecasting_files/libs/quarto-html/popper.min.js"></script>
+<script src="forecasting_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="forecasting_files/libs/quarto-html/anchor.min.js"></script>
+<link href="forecasting_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="forecasting_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="forecasting_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="forecasting_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="forecasting_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#create-time-series-for-each-species" id="toc-create-time-series-for-each-species" class="nav-link active" data-scroll-target="#create-time-series-for-each-species"><span class="header-section-number">1</span> Create time series for each species</a></li>
+  <li><a href="#seasonality-detection" id="toc-seasonality-detection" class="nav-link" data-scroll-target="#seasonality-detection"><span class="header-section-number">2</span> Seasonality Detection</a></li>
+  <li><a href="#stationarity" id="toc-stationarity" class="nav-link" data-scroll-target="#stationarity"><span class="header-section-number">3</span> Stationarity</a></li>
+  </ul>
+</nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">forecasting</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr) </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate) </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(xts) </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tsoutliers) </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel) </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(doParallel) </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(seastests)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tseries)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Let’s clean the data:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df<span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"Data/sacrois_complete.csv"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">unique</span>(df<span class="sc">$</span>X3A_CODE))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "ANE"     "BES"     "BOG"     "BSS"     "BZX"     "CTL"     "DCP"    
+ [8] "DEX"     "DPS"     "ELX"     "FIN"     "FLX"     "FOX"     "GUX"    
+[15] "HKE"     "JAX"     "JLX"     "JOD"     "MAX"     "MGR"     "MNZ"    
+[22] "MUL"     "MUX_bis" "NEP"     "OCT"     "PAC"     "PEN"     "PIL"    
+[29] "POD"     "SAA"     "SBA"     "SBG"     "SBX"     "SOX"     "SQY"    
+[36] "SQZ"     "SRX"     "SWM"     "TUX"     "VLO"     "WEX"     "WHB"    
+[43] "XOX"     "ZZZ"    </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">length</span>(<span class="fu">unique</span>(df<span class="sc">$</span>X3A_CODE))) <span class="co"># 44 species</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 44</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>DATE_SEQ <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(df<span class="sc">$</span>DATE_SEQ)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   517404 obs. of  4 variables:
+ $ DATE_SEQ               : Date, format: "1999-12-27" "1999-12-27" ...
+ $ X3A_CODE               : chr  "ANE" "BES" "BOG" "BSS" ...
+ $ QUANT_POIDS_VIF_MOYENNE: num  0 0 0 2636 0 ...
+ $ MONTANT_EUROS_MOYENNE  : num  0 0 0 15979 0 ...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">"Date"</span> <span class="ot">=</span> <span class="st">"DATE_SEQ"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">"Species"</span> <span class="ot">=</span> <span class="st">"X3A_CODE"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">"LandingsKG"</span> <span class="ot">=</span> <span class="st">"QUANT_POIDS_VIF_MOYENNE"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">"LandingsEUR"</span> <span class="ot">=</span> <span class="st">"MONTANT_EUROS_MOYENNE"</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Date <span class="sc">&gt;=</span> <span class="st">"2001-01-01"</span> <span class="sc">&amp;</span> Date <span class="sc">&lt;</span> <span class="st">"2024-01-01"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We are getting rid of the late 1999 data and beginning of 2024 data.</p>
+<section id="create-time-series-for-each-species" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Create time series for each species</h1>
+<p>We will create a <code>ts_list()</code> , a list of lists, that contains the time-series of each species of the data set. The frequency is <strong>365</strong> because we are dealing with daily data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get the list of unique species</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>species_list <span class="ot">&lt;-</span> <span class="fu">unique</span>(df<span class="sc">$</span>Species)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the exact date range we want</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>start_date <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(<span class="st">"2000-01-01"</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>end_date <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(<span class="st">"2023-12-31"</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a complete date sequence</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>date_seq <span class="ot">&lt;-</span> <span class="fu">seq</span>(start_date, end_date, <span class="at">by =</span> <span class="st">"day"</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a time series for each species</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>ts_list <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (species <span class="cf">in</span> species_list) {</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Filter data for the current species and aggregate by date</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  species_data <span class="ot">&lt;-</span> df <span class="sc">%&gt;%</span> </span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(Species <span class="sc">==</span> species) <span class="sc">%&gt;%</span> </span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(Date) <span class="sc">%&gt;%</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarize</span>(<span class="at">LandingsKG =</span> <span class="fu">sum</span>(LandingsKG, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ungroup</span>()</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Create a data frame with all dates</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>  full_data <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">Date =</span> date_seq)</span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Merge with the species data</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>  full_data <span class="ot">&lt;-</span> <span class="fu">left_join</span>(full_data, species_data, <span class="at">by =</span> <span class="st">"Date"</span>)</span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Fill NA values with 0</span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>  full_data<span class="sc">$</span>LandingsKG[<span class="fu">is.na</span>(full_data<span class="sc">$</span>LandingsKG)] <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Create a ts object</span></span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>  ts_object <span class="ot">&lt;-</span> <span class="fu">ts</span>(full_data<span class="sc">$</span>LandingsKG, </span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>                  <span class="at">start =</span> <span class="fu">c</span>(<span class="dv">2000</span>, <span class="dv">1</span>), </span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>                  <span class="at">frequency =</span> <span class="dv">365</span>)</span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Add the ts object to the list</span></span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>  ts_list[[<span class="fu">paste0</span>(<span class="st">"ts_"</span>, species)]] <span class="ot">&lt;-</span> ts_object</span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a vector with all the TS names</span></span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>ts_names <span class="ot">&lt;-</span> <span class="fu">names</span>(ts_list)</span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Print the names of the time series</span></span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(ts_names)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "ts_ANE"     "ts_BES"     "ts_BOG"     "ts_BSS"     "ts_BZX"    
+ [6] "ts_CTL"     "ts_DCP"     "ts_DEX"     "ts_DPS"     "ts_ELX"    
+[11] "ts_FIN"     "ts_FLX"     "ts_FOX"     "ts_GUX"     "ts_HKE"    
+[16] "ts_JAX"     "ts_JLX"     "ts_JOD"     "ts_MAX"     "ts_MGR"    
+[21] "ts_MNZ"     "ts_MUL"     "ts_MUX_bis" "ts_NEP"     "ts_OCT"    
+[26] "ts_PAC"     "ts_PEN"     "ts_PIL"     "ts_POD"     "ts_SAA"    
+[31] "ts_SBA"     "ts_SBG"     "ts_SBX"     "ts_SOX"     "ts_SQY"    
+[36] "ts_SQZ"     "ts_SRX"     "ts_SWM"     "ts_TUX"     "ts_VLO"    
+[41] "ts_WEX"     "ts_WHB"     "ts_XOX"     "ts_ZZZ"    </code></pre>
+</div>
+</div>
+</section>
+<section id="seasonality-detection" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Seasonality Detection</h1>
+<p>We want to apply the <code>combined_test</code> on each time series to sea if there is any seasonality. You should note that:</p>
+<ul>
+<li><p><strong>H1</strong> means <strong>seasonality</strong> <em>(alternative hypothesis)</em></p></li>
+<li><p><strong>H0</strong> means <strong>NO seasonality</strong> <em>(null hypothesis)</em></p></li>
+<li><p>if p &lt; 0.05 then H1 : seasonality</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>seasonal_combined_test <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>seasonal_seasdum <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Loop over each TS</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> <span class="fu">names</span>(ts_list)) {</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve data from the time series list</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Apply the combined_test() test to the time series</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>  ct_res <span class="ot">&lt;-</span> <span class="fu">combined_test</span>(ts_data)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Check each p-value and display results if at least one valid H1</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  ct_results <span class="ot">&lt;-</span> ct_res<span class="sc">$</span>stat</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  ct_pvals <span class="ot">&lt;-</span> ct_res<span class="sc">$</span>Pval</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (ct_results <span class="sc">==</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste0</span>(<span class="st">"Combined_test results for the series "</span>, ts_name))</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(ct_res)</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    seasonal_combined_test <span class="ot">&lt;-</span> <span class="fu">c</span>(seasonal_combined_test, ts_name)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># # Apply the seasdum() test to the time series</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  <span class="co"># sd_res &lt;- seasdum(ts_data)</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  <span class="co"># </span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  <span class="co"># # Check p-value and display results if &lt; 0.05</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  <span class="co"># if (sd_res$Pval &lt; 0.05) {</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   cat("\n")</span></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   cat("\n")</span></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   print(paste0("Résultats du seasdum pour la série ", ts_name))</span></span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   print(sd_res)</span></span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   seasonal_seasdum &lt;- c(seasonal_seasdum, ts_name)</span></span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>  <span class="co"># }</span></span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+
+[1] "Combined_test results for the series ts_BOG"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  0.9506946 0.9630191 1.98604e-08
+
+
+[1] "Combined_test results for the series ts_BSS"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_BZX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 9.859313e-05
+
+
+[1] "Combined_test results for the series ts_CTL"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  7.699966e-05 2.308044e-08 0
+
+
+[1] "Combined_test results for the series ts_FLX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 6.402466e-09
+
+
+[1] "Combined_test results for the series ts_HKE"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 3.996884e-07
+
+
+[1] "Combined_test results for the series ts_JAX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 4.51619e-05
+
+
+[1] "Combined_test results for the series ts_MNZ"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 1.821931e-11
+
+
+[1] "Combined_test results for the series ts_MUL"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 2.19711e-10
+
+
+[1] "Combined_test results for the series ts_MUX_bis"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 0.00247086 0.0004175648
+
+
+[1] "Combined_test results for the series ts_NEP"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  0.8851714 0.0552564 2.778844e-10
+
+
+[1] "Combined_test results for the series ts_SAA"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 1.880718e-13
+
+
+[1] "Combined_test results for the series ts_SBA"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 2.220446e-16
+
+
+[1] "Combined_test results for the series ts_SBX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 6.241518e-05
+
+
+[1] "Combined_test results for the series ts_SOX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 1.793225e-07
+
+
+[1] "Combined_test results for the series ts_SQZ"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 0.007248347 1.016409e-12
+
+
+[1] "Combined_test results for the series ts_SRX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 1.232348e-14
+
+
+[1] "Combined_test results for the series ts_SWM"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 3.432426e-05
+
+
+[1] "Combined_test results for the series ts_TUX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  0.0003509172 0.01070668 0
+
+
+[1] "Combined_test results for the series ts_ZZZ"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 0.003959824 9.216575e-06</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">assign</span>(<span class="st">"seasonal_combined_test"</span>, seasonal_combined_test, <span class="at">envir =</span> .GlobalEnv)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><u>The <code>combined_test()</code> function combines three tests:</u></p>
+<ul>
+<li><p>QS test (Quantile Spectral test)</p></li>
+<li><p>QS-R test (QS test on residuals)</p></li>
+<li><p>KW-R test (Kruskal-Wallis test on residuals)</p></li>
+</ul>
+<p><u>The function considers a time series as seasonal if:</u></p>
+<ul>
+<li><p>The p-value of QS-R is &lt; 0.01 OR the p-value of KW-R is &lt; 0.001</p></li>
+<li><p>OR if both the p-value of QS is &lt; 0.01 AND the p-value of KW-R is &lt; 0.01</p></li>
+</ul>
+<p><u>Here are the time series that have Seasonality:</u></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>seasonal_combined_test</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "ts_BOG"     "ts_BSS"     "ts_BZX"     "ts_CTL"     "ts_FLX"    
+ [6] "ts_HKE"     "ts_JAX"     "ts_MNZ"     "ts_MUL"     "ts_MUX_bis"
+[11] "ts_NEP"     "ts_SAA"     "ts_SBA"     "ts_SBX"     "ts_SOX"    
+[16] "ts_SQZ"     "ts_SRX"     "ts_SWM"     "ts_TUX"     "ts_ZZZ"    </code></pre>
+</div>
+</div>
+<p>We need to correct that seasonality among those time series.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> seasonal_combined_test) {</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve time series data from the list</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  decomp <span class="ot">&lt;-</span> <span class="fu">stl</span>(ts_data, <span class="at">s.window =</span> <span class="dv">365</span>)  <span class="co"># STL decomposition</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  seasonal <span class="ot">&lt;-</span> decomp<span class="sc">$</span>time.series[, <span class="st">"seasonal"</span>]  <span class="co"># Get the seasonal component</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  ts_data_adjusted <span class="ot">&lt;-</span> ts_data <span class="sc">-</span> seasonal  <span class="co"># Correcting the seasonal component</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  ts_list[[ts_name]] <span class="ot">&lt;-</span> ts_data_adjusted  <span class="co"># Update the adjusted time series in the list</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now that this is done, let’s check again for any seasonality:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>seasonal_combined_test <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>seasonal_seasdum <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Loop over each TS</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> <span class="fu">names</span>(ts_list)) {</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve data from the time series list</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Apply the combined_test() test to the time series</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  ct_res <span class="ot">&lt;-</span> <span class="fu">combined_test</span>(ts_data)</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Check each p-value and display results if at least one valid H1</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  ct_results <span class="ot">&lt;-</span> ct_res<span class="sc">$</span>stat</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  ct_pvals <span class="ot">&lt;-</span> ct_res<span class="sc">$</span>Pval</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (ct_results <span class="sc">==</span> <span class="cn">TRUE</span>) {</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste0</span>(<span class="st">"Combined_test results for the series "</span>, ts_name))</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(ct_res)</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>    seasonal_combined_test <span class="ot">&lt;-</span> <span class="fu">c</span>(seasonal_combined_test, ts_name)</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+
+[1] "Combined_test results for the series ts_BOG"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_BSS"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_BZX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_CTL"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_FLX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_HKE"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_JAX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_MUL"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_MUX_bis"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_NEP"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 1.660894e-13
+
+
+[1] "Combined_test results for the series ts_SAA"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SBA"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SBX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SOX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SQZ"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SRX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_SWM"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0
+
+
+[1] "Combined_test results for the series ts_TUX"
+Test used:  WO 
+ 
+Test statistic:  1 
+P-value:  1 1 0</code></pre>
+</div>
+</div>
+<p>It’s weird that we have such a difference between the first two tests and the last one. There are quite the opposite, in term of P-values.</p>
+<p>For now we will focus on the first two tests <em>(QS &amp; QS-R)</em> tests as our results for seasonality. According to them, <strong>there is no seasonality left.</strong></p>
+</section>
+<section id="stationarity" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Stationarity</h1>
+<p>Now, let’s take care of stationarity. Most of the forecasting models we are going to use need stationary time-series. We will use the <code>adf.test</code> from the <a href="https://www.rdocumentation.org/packages/tseries/versions/0.10-54/topics/adf.test">tseries</a> package.</p>
+<p>Note that for this test we have:</p>
+<ul>
+<li><p>H0: série non stationnaire (possède une racine unitaire)</p></li>
+<li><p>H1: série stationnaire (n’en possède pas)</p></li>
+<li><p>if p&lt;0.05 : the serie is stationary</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># First round of differencing</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> <span class="fu">names</span>(ts_list)) {</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve time series data from the list</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  adf_result <span class="ot">&lt;-</span> <span class="fu">adf.test</span>(ts_data)  <span class="co"># Apply ADF test for stationarity</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">#print(adf_result)</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Check if P-Value &gt; 0.05</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (adf_result<span class="sc">$</span>p.value <span class="sc">&gt;</span> <span class="fl">0.05</span>) {</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Apply a difference to the time series if it is not stationary</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    ts_list[[ts_name]] <span class="ot">&lt;-</span> <span class="fu">diff</span>(ts_data)</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"The TS"</span>, ts_name, <span class="st">"has been differentiated"</span>))</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="cf">else</span> {</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"The TS"</span>, ts_name, <span class="st">"is stationary"</span>))</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "The TS ts_ANE is stationary"
+[1] "The TS ts_BES is stationary"
+[1] "The TS ts_BOG is stationary"
+[1] "The TS ts_BSS is stationary"
+[1] "The TS ts_BZX is stationary"
+[1] "The TS ts_CTL is stationary"
+[1] "The TS ts_DCP is stationary"
+[1] "The TS ts_DEX is stationary"
+[1] "The TS ts_DPS is stationary"
+[1] "The TS ts_ELX is stationary"
+[1] "The TS ts_FIN is stationary"
+[1] "The TS ts_FLX is stationary"
+[1] "The TS ts_FOX is stationary"
+[1] "The TS ts_GUX is stationary"
+[1] "The TS ts_HKE is stationary"
+[1] "The TS ts_JAX is stationary"
+[1] "The TS ts_JLX is stationary"
+[1] "The TS ts_JOD is stationary"
+[1] "The TS ts_MAX is stationary"
+[1] "The TS ts_MGR is stationary"
+[1] "The TS ts_MNZ is stationary"
+[1] "The TS ts_MUL is stationary"
+[1] "The TS ts_MUX_bis is stationary"
+[1] "The TS ts_NEP is stationary"
+[1] "The TS ts_OCT is stationary"
+[1] "The TS ts_PAC is stationary"
+[1] "The TS ts_PEN is stationary"
+[1] "The TS ts_PIL is stationary"
+[1] "The TS ts_POD is stationary"
+[1] "The TS ts_SAA is stationary"
+[1] "The TS ts_SBA is stationary"
+[1] "The TS ts_SBG is stationary"
+[1] "The TS ts_SBX is stationary"
+[1] "The TS ts_SOX is stationary"
+[1] "The TS ts_SQY is stationary"
+[1] "The TS ts_SQZ is stationary"
+[1] "The TS ts_SRX is stationary"
+[1] "The TS ts_SWM is stationary"
+[1] "The TS ts_TUX is stationary"
+[1] "The TS ts_VLO is stationary"
+[1] "The TS ts_WEX is stationary"
+[1] "The TS ts_WHB is stationary"
+[1] "The TS ts_XOX is stationary"
+[1] "The TS ts_ZZZ is stationary"</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Second round of differencing if necessary</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> <span class="fu">names</span>(ts_list)) {</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve time series data from the list</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  adf_result <span class="ot">&lt;-</span> <span class="fu">adf.test</span>(ts_data)  <span class="co"># Apply ADF test for stationarity</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">#print(adf_result)</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Check if P-Value &gt; 0.05</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (adf_result<span class="sc">$</span>p.value <span class="sc">&gt;</span> <span class="fl">0.05</span>) {</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"The TS"</span>, ts_name, <span class="st">"is still not stationary"</span>))</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Apply a difference to the time series if it is not stationary</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>    ts_list[[ts_name]] <span class="ot">&lt;-</span> <span class="fu">diff</span>(ts_data)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"The TS"</span>, ts_name, <span class="st">"has been differentiated a second time"</span>))</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Final check</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (ts_name <span class="cf">in</span> <span class="fu">names</span>(ts_list)) {</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>  ts_data <span class="ot">&lt;-</span> ts_list[[ts_name]]  <span class="co"># Retrieve time series data from the list</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>  adf_result <span class="ot">&lt;-</span> <span class="fu">adf.test</span>(ts_data)  <span class="co"># Apply ADF test for stationarity</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>  <span class="co">#print(adf_result)</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (adf_result<span class="sc">$</span>p.value <span class="sc">&gt;</span> <span class="fl">0.05</span>) {</span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Check if P-Value &gt; 0.05</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">"</span><span class="sc">\033</span><span class="st">[1m</span><span class="sc">\033</span><span class="st">[4m</span><span class="sc">\033</span><span class="st">[31mThe time series "</span>, ts_name, <span class="st">" is still not stationary:</span><span class="sc">\033</span><span class="st">[0m</span><span class="sc">\n</span><span class="st">"</span>))</span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>It seems that every time-series is now stationary. Let’s check if they all have the same length</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(ts_list)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>List of 44
+ $ ts_ANE    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_BES    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_BOG    : Time-Series [1:8766] from 2000 to 2024: 0.174 0.174 0.174 0.174 0.174 ...
+ $ ts_BSS    : Time-Series [1:8766] from 2000 to 2024: 67.6 101.6 113.1 26.9 22.8 ...
+ $ ts_BZX    : Time-Series [1:8766] from 2000 to 2024: 0.21 0.21 0.21 0.21 0.21 ...
+ $ ts_CTL    : Time-Series [1:8766] from 2000 to 2024: 226.6 234.5 237 122.7 31.8 ...
+ $ ts_DCP    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_DEX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_DPS    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_ELX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_FIN    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_FLX    : Time-Series [1:8766] from 2000 to 2024: 18.6 19.2 24 -24.3 -60.6 ...
+ $ ts_FOX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_GUX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_HKE    : Time-Series [1:8766] from 2000 to 2024: 121 122 120 117 99 ...
+ $ ts_JAX    : Time-Series [1:8766] from 2000 to 2024: 86.1 86.1 86.1 86.1 86.1 ...
+ $ ts_JLX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_JOD    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_MAX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_MGR    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_MNZ    : Time-Series [1:8766] from 2000 to 2024: 307 312 301 289 230 ...
+ $ ts_MUL    : Time-Series [1:8766] from 2000 to 2024: 4.93 16.15 13.6 15.54 15.81 ...
+ $ ts_MUX_bis: Time-Series [1:8766] from 2000 to 2024: 11.07 35.32 44.02 -8.04 -17.73 ...
+ $ ts_NEP    : Time-Series [1:8766] from 2000 to 2024: 137 146 138 140 132 ...
+ $ ts_OCT    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_PAC    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_PEN    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_PIL    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_POD    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_SAA    : Time-Series [1:8766] from 2000 to 2024: 0.000466 0.000465 0.000465 0.000464 0.000464 ...
+ $ ts_SBA    : Time-Series [1:8766] from 2000 to 2024: 0.0566 0.0566 0.0566 0.0566 0.0566 ...
+ $ ts_SBG    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_SBX    : Time-Series [1:8766] from 2000 to 2024: 207 -1039 211 205 197 ...
+ $ ts_SOX    : Time-Series [1:8766] from 2000 to 2024: 42.7 42.4 40.4 30.1 14.9 ...
+ $ ts_SQY    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_SQZ    : Time-Series [1:8766] from 2000 to 2024: 85.5 96.3 99.7 38.9 -62.4 ...
+ $ ts_SRX    : Time-Series [1:8766] from 2000 to 2024: 123.23 137.91 99.64 40.25 7.19 ...
+ $ ts_SWM    : Time-Series [1:8766] from 2000 to 2024: 2.23 2.23 2.23 2.24 2.24 ...
+ $ ts_TUX    : Time-Series [1:8766] from 2000 to 2024: 164 164 164 163 163 ...
+ $ ts_VLO    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_WEX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_WHB    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_XOX    : Time-Series [1:8766] from 2000 to 2024: 0 0 0 0 0 0 0 0 0 0 ...
+ $ ts_ZZZ    : Time-Series [1:8766] from 2000 to 2024: 760 833 991 862 947 ...</code></pre>
+</div>
+</div>
+<p>They do. Now, before forecasting we are going to use a variables selection method. This will help us to reduce the number of irrelevant variables of our models.</p>
+<p>After that, we will apply econometrics and machine learning forecasting models.</p>
+<p>From now on, we’ll reason as follows:</p>
+<ul>
+<li><p><span class="math inline">\(Y_t\)</span>: will be the variable we seek to predict</p></li>
+<li><p><span class="math inline">\(X_k,_t\)</span>: will be the explanatory variables, which will add information to enable the models to better predict our <span class="math inline">\(Y_t\)</span>.</p></li>
+</ul>
+<p>For your information, here’s a table summarizing our variables. In bold are the dynamic variables in <a href="https://archimer.ifremer.fr/doc/00784/89579/">Ifremer’s IAM forecasting model</a>. As these variables are already considered dynamic, they are the only ones we won’t attempt to predict.</p>
+<table class="caption-top table">
+<caption>Different species of the SACROIS dataset</caption>
+<colgroup>
+<col style="width: 12%">
+<col style="width: 38%">
+<col style="width: 12%">
+<col style="width: 36%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>HKE</th>
+<th>European hake</th>
+<th>MUT</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>NEP</strong></td>
+<td></td>
+<td><strong>ARA</strong></td>
+<td></td>
+</tr>
+<tr class="even">
+<td><strong>DPS</strong></td>
+<td></td>
+<td>ANE</td>
+<td>European anchovy</td>
+</tr>
+<tr class="odd">
+<td>BES</td>
+<td>Belone</td>
+<td>BOG</td>
+<td>Bogue</td>
+</tr>
+<tr class="even">
+<td>BSS</td>
+<td>European seabass</td>
+<td>BZX</td>
+<td>Bonitos</td>
+</tr>
+<tr class="odd">
+<td>CTL</td>
+<td>Cuttlefish, bobtail squids</td>
+<td>DCP</td>
+<td>Natantian decapods</td>
+</tr>
+<tr class="even">
+<td>DEX</td>
+<td>Dentex</td>
+<td>DPS</td>
+<td>Deep-water rose shrimp</td>
+</tr>
+<tr class="odd">
+<td>ELX</td>
+<td>River eels</td>
+<td>FIN</td>
+<td>Finfishes</td>
+</tr>
+<tr class="even">
+<td>FLX</td>
+<td>Flatfishes</td>
+<td>FOX</td>
+<td>Forkbeards</td>
+</tr>
+<tr class="odd">
+<td>GUX</td>
+<td>Gurnards, searobins</td>
+<td>JAX</td>
+<td>Jack and horse mackerels</td>
+</tr>
+<tr class="even">
+<td>JLX</td>
+<td>Murex shells</td>
+<td>JOD</td>
+<td>John dory</td>
+</tr>
+<tr class="odd">
+<td>MAX</td>
+<td>Mackerels</td>
+<td>MGR</td>
+<td>Meagre</td>
+</tr>
+<tr class="even">
+<td>MNZ</td>
+<td>Monkfishes</td>
+<td>MUL</td>
+<td>Mullets</td>
+</tr>
+<tr class="odd">
+<td>MUX_bis</td>
+<td>Red mullets</td>
+<td>OCT</td>
+<td>Octopuses, etc.</td>
+</tr>
+<tr class="even">
+<td>PAC</td>
+<td>Common pandora</td>
+<td>PEN</td>
+<td>Penaeus shrimps</td>
+</tr>
+<tr class="odd">
+<td>PIL</td>
+<td>European pilchard</td>
+<td>POD</td>
+<td>Poor cod</td>
+</tr>
+<tr class="even">
+<td>SAA</td>
+<td>Round sardinella</td>
+<td>SBA</td>
+<td>Axillary seabream</td>
+</tr>
+<tr class="odd">
+<td>SBG</td>
+<td>Gilthead seabream</td>
+<td>SBX</td>
+<td>Porgies, seabreams</td>
+</tr>
+<tr class="even">
+<td>SOX</td>
+<td>Soles</td>
+<td>SQY</td>
+<td>Squillids</td>
+</tr>
+<tr class="odd">
+<td>SQZ</td>
+<td>Inshore squids</td>
+<td>SRX</td>
+<td>Rays, stingrays, mantas</td>
+</tr>
+<tr class="even">
+<td>SWM</td>
+<td>Swimming crabs, etc.</td>
+<td>TUX</td>
+<td>Tuna-like fishes</td>
+</tr>
+<tr class="odd">
+<td>VLO</td>
+<td>Spiny lobsters</td>
+<td>WEX</td>
+<td>Weevers</td>
+</tr>
+<tr class="even">
+<td>WHB</td>
+<td>Blue whiting</td>
+<td>XOX</td>
+<td>Sandlances</td>
+</tr>
+</tbody>
+</table>
+<p><u>Note</u>: <code>ZZZ</code> therefore includes all species not mentioned in the table above. It is therefore a collection of several species.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
