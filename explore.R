@@ -20,18 +20,18 @@ df$Date <- as.Date(df$Date)
 # Weekly data tranformation----
 #' My computer isn't powerful enough to run the tso() function (see next) on a 
 #' large daily data of ~8000+ values, so that's why we are going with weekly data
-
-df_weekly <- df %>%
-  mutate(Week = floor_date(Date, unit = "week")) %>%
-  group_by(Week, Species) %>%
-  summarize(
-    LandingsKG = sum(LandingsKG),
-    LandingsEUR = sum(LandingsEUR),
-    .groups = "drop"
-  ) %>%
-  arrange(Week, Species)
-
-View(df_weekly)
+# 
+# df_weekly <- df %>%
+#   mutate(Week = floor_date(Date, unit = "week")) %>%
+#   group_by(Week, Species) %>%
+#   summarize(
+#     LandingsKG = sum(LandingsKG),
+#     LandingsEUR = sum(LandingsEUR),
+#     .groups = "drop"
+#   ) %>%
+#   arrange(Week, Species)
+# 
+# View(df_weekly)
 
 
 # CREATE TIME SERIES FOR EACH SPECIES----
@@ -53,7 +53,7 @@ for (species in species_list) {
                   frequency = 365.25)
   
   # Add the ts object to the list
-  tslist[[paste0("ts", species)]] <- ts_object
+  ts_list[[paste0("ts", species)]] <- ts_object
 }
 # Create a vector with all the TS names
 ts_names <- names(ts_list)
