@@ -1,7 +1,3 @@
-README
-================
-Noa LE ROUX
-2024-06-28
 
 # Optimization of IAM forecasting model inputs
 
