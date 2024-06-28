@@ -1,4 +1,12 @@
+README
+================
+Noa LE ROUX
+2024-06-28
+
 # Optimization of IAM forecasting model inputs
+
+<u>**The full analysis (code & results) can be see an**</u> :
+<https://noalrx.github.io/SACROIS/>
 
 [Ifremer’s IAM model](https://archimer.ifremer.fr/doc/00784/89579/)
 forecasts the evolution of LPUE / VPUE (Landings / Value Per Unit of
@@ -25,156 +33,30 @@ dynamic variables in [Ifremer’s IAM forecasting
 model](https://archimer.ifremer.fr/doc/00784/89579/). The rest of them
 are static.
 
-<table>
-<colgroup>
-<col style="width: 12%" />
-<col style="width: 38%" />
-<col style="width: 12%" />
-<col style="width: 36%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>HKE</th>
-<th>European hake</th>
-<th>MUT</th>
-<th>Red mullet</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><strong>NEP</strong></td>
-<td><strong>Norway lobster</strong></td>
-<td><strong>ARA</strong></td>
-<td><strong>Red shrimp</strong></td>
-</tr>
-<tr class="even">
-<td><strong>DPS</strong></td>
-<td><strong>Deep-water rose shrimp</strong></td>
-<td>ANE</td>
-<td>European anchovy</td>
-</tr>
-<tr class="odd">
-<td>BES</td>
-<td>Belone</td>
-<td>BOG</td>
-<td>Bogue</td>
-</tr>
-<tr class="even">
-<td>BSS</td>
-<td>European seabass</td>
-<td>BZX</td>
-<td>Bonitos</td>
-</tr>
-<tr class="odd">
-<td>CTL</td>
-<td>Cuttlefish, bobtail squids</td>
-<td>DCP</td>
-<td>Natantian decapods</td>
-</tr>
-<tr class="even">
-<td>DEX</td>
-<td>Dentex</td>
-<td>DPS</td>
-<td>Deep-water rose shrimp</td>
-</tr>
-<tr class="odd">
-<td>ELX</td>
-<td>River eels</td>
-<td>FIN</td>
-<td>Finfishes</td>
-</tr>
-<tr class="even">
-<td>FLX</td>
-<td>Flatfishes</td>
-<td>FOX</td>
-<td>Forkbeards</td>
-</tr>
-<tr class="odd">
-<td>GUX</td>
-<td>Gurnards, searobins</td>
-<td>JAX</td>
-<td>Jack and horse mackerels</td>
-</tr>
-<tr class="even">
-<td>JLX</td>
-<td>Murex shells</td>
-<td>JOD</td>
-<td>John dory</td>
-</tr>
-<tr class="odd">
-<td>MAX</td>
-<td>Mackerels</td>
-<td>MGR</td>
-<td>Meagre</td>
-</tr>
-<tr class="even">
-<td>MNZ</td>
-<td>Monkfishes</td>
-<td>MUL</td>
-<td>Mullets</td>
-</tr>
-<tr class="odd">
-<td>MUX_bis</td>
-<td>Red mullets</td>
-<td>OCT</td>
-<td>Octopuses, etc.</td>
-</tr>
-<tr class="even">
-<td>PAC</td>
-<td>Common pandora</td>
-<td>PEN</td>
-<td>Penaeus shrimps</td>
-</tr>
-<tr class="odd">
-<td>PIL</td>
-<td>European pilchard</td>
-<td>POD</td>
-<td>Poor cod</td>
-</tr>
-<tr class="even">
-<td>SAA</td>
-<td>Round sardinella</td>
-<td>SBA</td>
-<td>Axillary seabream</td>
-</tr>
-<tr class="odd">
-<td>SBG</td>
-<td>Gilthead seabream</td>
-<td>SBX</td>
-<td>Porgies, seabreams</td>
-</tr>
-<tr class="even">
-<td>SOX</td>
-<td>Soles</td>
-<td>SQY</td>
-<td>Squillids</td>
-</tr>
-<tr class="odd">
-<td>SQZ</td>
-<td>Inshore squids</td>
-<td>SRX</td>
-<td>Rays, stingrays, mantas</td>
-</tr>
-<tr class="even">
-<td>SWM</td>
-<td>Swimming crabs, etc.</td>
-<td>TUX</td>
-<td>Tuna-like fishes</td>
-</tr>
-<tr class="odd">
-<td>VLO</td>
-<td>Spiny lobsters</td>
-<td>WEX</td>
-<td>Weevers</td>
-</tr>
-<tr class="even">
-<td>WHB</td>
-<td>Blue whiting</td>
-<td>XOX</td>
-<td>Sandlances</td>
-</tr>
-</tbody>
-</table>
+| HKE     | European hake              | MUT     | Red mullet               |
+|---------|----------------------------|---------|--------------------------|
+| **NEP** | **Norway lobster**         | **ARA** | **Red shrimp**           |
+| **DPS** | **Deep-water rose shrimp** | ANE     | European anchovy         |
+| BES     | Belone                     | BOG     | Bogue                    |
+| BSS     | European seabass           | BZX     | Bonitos                  |
+| CTL     | Cuttlefish, bobtail squids | DCP     | Natantian decapods       |
+| DEX     | Dentex                     | DPS     | Deep-water rose shrimp   |
+| ELX     | River eels                 | FIN     | Finfishes                |
+| FLX     | Flatfishes                 | FOX     | Forkbeards               |
+| GUX     | Gurnards, searobins        | JAX     | Jack and horse mackerels |
+| JLX     | Murex shells               | JOD     | John dory                |
+| MAX     | Mackerels                  | MGR     | Meagre                   |
+| MNZ     | Monkfishes                 | MUL     | Mullets                  |
+| MUX_bis | Red mullets                | OCT     | Octopuses, etc.          |
+| PAC     | Common pandora             | PEN     | Penaeus shrimps          |
+| PIL     | European pilchard          | POD     | Poor cod                 |
+| SAA     | Round sardinella           | SBA     | Axillary seabream        |
+| SBG     | Gilthead seabream          | SBX     | Porgies, seabreams       |
+| SOX     | Soles                      | SQY     | Squillids                |
+| SQZ     | Inshore squids             | SRX     | Rays, stingrays, mantas  |
+| SWM     | Swimming crabs, etc.       | TUX     | Tuna-like fishes         |
+| VLO     | Spiny lobsters             | WEX     | Weevers                  |
+| WHB     | Blue whiting               | XOX     | Sandlances               |
 
 <u>Note</u>: `ZZZ` therefore includes all species not mentioned in the
 table above. It is therefore a collection of several species.

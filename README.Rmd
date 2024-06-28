@@ -7,6 +7,8 @@ output: html_document
 
 # Optimization of IAM forecasting model inputs
 
+[**The full analysis (code & results) can be see an**]{.underline} : <https://noalrx.github.io/SACROIS/>
+
 [Ifremer's IAM model](https://archimer.ifremer.fr/doc/00784/89579/) forecasts the evolution of LPUE / VPUE (Landings / Value Per Unit of Effort) of fish in the Mediterranean sea according to different scenarios.
 
 The model results can be seen in [STECF reports.](https://stecf.ec.europa.eu/documents_en?prefLang=fr)
