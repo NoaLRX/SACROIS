@@ -26,7 +26,6 @@ model](https://archimer.ifremer.fr/doc/00784/89579/). The rest of them
 are static.
 
 <table>
-<caption>Different species of the SACROIS dataset</caption>
 <colgroup>
 <col style="width: 12%" />
 <col style="width: 38%" />
@@ -38,19 +37,19 @@ are static.
 <th>HKE</th>
 <th>European hake</th>
 <th>MUT</th>
-<th></th>
+<th>Red mullet</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><strong>NEP</strong></td>
-<td></td>
+<td><strong>Norway lobster</strong></td>
 <td><strong>ARA</strong></td>
-<td></td>
+<td><strong>Red shrimp</strong></td>
 </tr>
 <tr class="even">
 <td><strong>DPS</strong></td>
-<td></td>
+<td><strong>Deep-water rose shrimp</strong></td>
 <td>ANE</td>
 <td>European anchovy</td>
 </tr>
@@ -176,8 +175,6 @@ are static.
 </tr>
 </tbody>
 </table>
-
-Different species of the SACROIS dataset
 
 <u>Note</u>: `ZZZ` therefore includes all species not mentioned in the
 table above. It is therefore a collection of several species.

@@ -19,10 +19,10 @@ The data used are daily data from [SACROIS](https://archimer.ifremer.fr/doc/0077
 
 Here's a table summarizing the different species. In bold are the dynamic variables in [Ifremer's IAM forecasting model](https://archimer.ifremer.fr/doc/00784/89579/). The rest of them are static.
 
-| HKE     | European hake              | MUT     |                          |
+| HKE     | European hake              | MUT     | Red mullet               |
 |---------|----------------------------|---------|--------------------------|
-| **NEP** |                            | **ARA** |                          |
-| **DPS** |                            | ANE     | European anchovy         |
+| **NEP** | **Norway lobster**         | **ARA** | **Red shrimp**           |
+| **DPS** | **Deep-water rose shrimp** | ANE     | European anchovy         |
 | BES     | Belone                     | BOG     | Bogue                    |
 | BSS     | European seabass           | BZX     | Bonitos                  |
 | CTL     | Cuttlefish, bobtail squids | DCP     | Natantian decapods       |
@@ -43,7 +43,5 @@ Here's a table summarizing the different species. In bold are the dynamic variab
 | SWM     | Swimming crabs, etc.       | TUX     | Tuna-like fishes         |
 | VLO     | Spiny lobsters             | WEX     | Weevers                  |
 | WHB     | Blue whiting               | XOX     | Sandlances               |
-
-: Different species of the SACROIS dataset
 
 [Note]{.underline}: `ZZZ` therefore includes all species not mentioned in the table above. It is therefore a collection of several species.
