@@ -23,6 +23,11 @@ library(parallel)
 library(doParallel) 
 library(seastests)
 library(tseries)
+library(leaps)
+library(gets)
+library(lmtest)
+library(stats)
+library(FinTS)
 ```
 
 Let's clean the data:
@@ -269,7 +274,9 @@ It seems that every time-series is now stationary. Let's check if they all have 
 str(ts_list)
 ```
 
-They do. Now, before forecasting we are going to use a variables selection method. This will help us to reduce the number of irrelevant variables of our models.
+They do.
+
+Now, before forecasting we are going to use a variables selection method. This will help us to reduce the number of irrelevant variables of our models.
 
 After that, we will apply econometrics and machine learning forecasting models.
 
@@ -281,10 +288,10 @@ From now on, we'll reason as follows:
 
 For your information, here's a table summarizing our variables. In bold are the dynamic variables in [Ifremer's IAM forecasting model](https://archimer.ifremer.fr/doc/00784/89579/). As these variables are already considered dynamic, they are the only ones we won't attempt to predict.
 
-| HKE     | European hake              | MUT     |                          |
+| HKE     | European hake              | MUT     | Red mullet               |
 |---------|----------------------------|---------|--------------------------|
-| **NEP** |                            | **ARA** |                          |
-| **DPS** |                            | ANE     | European anchovy         |
+| **NEP** | **Norway lobster**         | **ARA** | **Red shrimp**           |
+| **DPS** | **Deep-water rose shrimp** | ANE     | European anchovy         |
 | BES     | Belone                     | BOG     | Bogue                    |
 | BSS     | European seabass           | BZX     | Bonitos                  |
 | CTL     | Cuttlefish, bobtail squids | DCP     | Natantian decapods       |
@@ -309,3 +316,207 @@ For your information, here's a table summarizing our variables. In bold are the 
 : Different species of the SACROIS dataset
 
 [Note]{.underline}: `ZZZ` therefore includes all species not mentioned in the table above. It is therefore a collection of several species.
+
+First, let's create a single dataframe:\
+
+```{r}
+# Starting from 1st January 2001 until total number of values : 8766
+dates <- seq(as.Date("2000-01-01"), by = "day", length.out = 8766)
+
+# Empty data frame
+df <- data.frame(Date = dates)
+
+for (nom in names(ts_list)) {
+  # Extract species names and delete "ts_"
+  nom_espece <- sub("^ts_", "", nom)
+  
+  # Add to a new column
+  df[[nom_espece]] <- as.vector(ts_list[[nom]])
+}
+
+write.csv(df, "Data/data_clean.csv", row.names = FALSE)
+str(df)
+```
+
+For the forecasting models we are going to use 80% of the df as training and the last 20% as testing base. The idea behind this is to train the models on the training base and compare their results with the "reality" *(meaning the testing base)*. This will allow us to compute some performance indicators and compare the models.
+
+# Cleaning Variables
+
+But first, there is one problem. Some species have long period with no data at all, meaning only 0's. We have to get rid of the species that have either:
+
+-   only 0's on the training base
+
+-   only 0's on the testing base
+
+The forecasting models can't perform with either a training or testing base full of 0's.
+
+```{r}
+df <- read.csv("Data/data_clean.csv")
+```
+
+```{r}
+n <- nrow(df)
+train_size <- round(0.8 * n)
+print(train_size)
+
+train <- df[1:train_size, 2:ncol(df)] # Get rid of "Date"
+
+constant_columns <- sapply(train, function(col) length(unique(col)) == 1)
+constant_column_names <- names(constant_columns)[constant_columns]
+constant_column_names
+```
+
+We have to get rid of `DCP` because it's constant
+
+```{r}
+n <- nrow(df)
+test_size <- round(0.2 * n)
+print(test_size)
+
+test <- df[(train_size+1):n, 2:ncol(df)] # Get rid of "Date"
+
+constant_columns <- sapply(test, function(col) length(unique(col)) == 1)
+constant_column_names <- names(constant_columns)[constant_columns]
+constant_column_names
+
+```
+
+We have to get rid of `ANE, DEX, DPS, FIN, JLX, PEN, WEX, WHB` because it's constant
+
+```{r}
+df <- df %>%
+  select(-c("ANE", "DCP", "DEX", "DPS", "FIN", "JLX", "PEN", "WHB"))
+names(df)
+```
+
+So now let's re do the training and testing bases
+
+```{r}
+train <- df[1:train_size, 2:ncol(df)] # Get rid of "Date"
+test <- df[(train_size+1):n, 2:ncol(df)] # Get rid of "Date"
+```
+
+# Forecasting: BES
+
+Let's start the variable selection process with `BES` as our $Y_t$
+
+## Variable selections
+
+The variable selection process if composed of two methods, the `get` and the `BestSubSet`.\
+We will try to take both of them into account.
+
+### BestSubSet Method
+
+```{r}
+leaps <- regsubsets(ANE ~ .,data= train, nbest=1, method=c("exhaustive"))
+leaps
+res.sum <- summary(leaps) 
+data.frame(Adj.R2=which.max(res.sum$adjr2),
+           CP=which.min(res.sum$cp),
+           BIC=which.min(res.sum$bic))
+
+#  plot  a  table  of  models  showing  variables  in  each  model 
+plot(leaps,scale="adjr2",main="Adjusted R2")
+plot(leaps,scale="Cp",main="Critère de Mallow's Cp")
+plot(leaps, scale = "bic", main = "BIC")
+
+```
+
+it seems that the following 9 variables are chosen by our 3 selection criteria: `FOX, GUX, JOD, MNZ, PAC, SQZ, SRX, ZZZ.`
+
+### Gets Method
+
+```{r}
+mX <- data.matrix(train[, !names(train) %in% c("BES")])
+y <- train$BES
+
+# ARX Initial
+modele_arx <- arx(y, mc = TRUE, ar = 1, mxreg = mX, vcov.type = "ordinary")
+
+
+seuil_p_value <- 0.05
+variables <- colnames(mX)
+VRAI <- TRUE
+
+while (VRAI) {
+  modele_arx <- arx(y, mc = TRUE, ar = 1, mxreg = mX, vcov.type = "ordinary")
+  
+  p_values <- modele_arx[["mean.results"]][["p-value"]][-c(1, 2)] # Exclure la constante et AR(1)
+  max_p_value <- max(p_values)
+  
+  if (max_p_value > seuil_p_value) {
+    variable_a_supprimer <- variables[which.max(p_values)]
+    variables <- setdiff(variables, variable_a_supprimer)
+    mX <- mX[, variables, drop = FALSE]
+  } else {
+    VRAI <- FALSE
+  }
+}
+
+
+arx_final <- arx(y, ar = 1, mxreg = mX, vcov.type = "ordinary")
+
+modele_gets <- getsm(arx_final)
+str(mX)
+```
+
+According to the results we should have 10 variables in our models: `BZX, FIN, FOX, GUX, JOD, MNZ, PAC, SBA, SQZ, SRX.`
+
+Note that p\<0.05 for the Ljung-Box ARCH(1) which means that we have probably conditional heteroskedasticity. Most machine learning and econometric forecasting models assume that the residuals (errors) are homoscedastic, meaning they have constant variance over time. The presence of ARCH effects violates this assumption, and using the selected variables without accounting for heteroskedasticity can lead to biased and inefficient model estimates.
+
+[Let's test that with different tests:]{.underline}
+
+```{r}
+# Fit a linear regression model
+model_fit <- lm(ANE ~ ., data = train)
+
+# Obtain residuals
+residuals <- residuals(model_fit)
+
+# Engle's LM test for ARCH effects
+arch_test <- ArchTest(residuals, lags = 1)
+print(arch_test)
+
+# Breusch-Pagan test for heteroskedasticity
+bp_test <- bptest(model_fit)
+print(bp_test)
+
+# Ljung-Box portmanteau test for ARCH effects
+squared_residuals <- residuals^2
+ljung_box_arch <- Box.test(squared_residuals, lag = 1, type = "Ljung-Box")
+print(ljung_box_arch)
+```
+
+All three tests provide strong evidence against the assumption of constant variance (homoscedasticity) and suggest the presence of ARCH effects (conditional heteroskedasticity) in our data.
+
+We'll continue our analysis and apply machine learning and econometric models, but bear in mind that the results are potentially biased for these reasons.
+
+## ARX with Get
+
+```{r}
+set.seed(123)
+n <- nrow(df)
+train_size <- round(0.8 * n)
+train_data <- df[1:train_size, 2:ncol(df)]
+test_data <- df[(train_size+1):n, 2:ncol(df)]
+y_real <- test_data$ANE
+
+
+mX_train <- data.matrix(train_data[,!names(train_data) %in% c("ANE", "DCP")]) 
+mX_test <- data.matrix(test_data[,!names(train_data) %in% c("ANE", "DCP")])
+
+y_train <- train_data$ANE
+y_test <- test_data$ANE
+
+model <- arx(y_train, mc = TRUE, ar = 1, mxreg = mX_train, vcov.type = "ordinary")
+n_test <- nrow(test_data)
+p_arxget <- predict(model, n.ahead = n_test, newmxreg = mX_test)
+p_arxget <- as.numeric(p_arxget)
+
+# Plot
+plot(y_real, type = "l", col = "black", lwd = 2, ylim = range(c(y_real)))
+lines(p_arxget, col = "red", lwd = 2)
+
+rmse <- sqrt(mean((y_real - p_arxget)^2, na.rm = TRUE))
+print(paste("RMSE :", rmse)) 
+```
