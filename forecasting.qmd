@@ -28,6 +28,7 @@ library(gets)
 library(lmtest)
 library(stats)
 library(FinTS)
+library(ggplot2)
 ```
 
 Let's clean the data:
@@ -49,9 +50,25 @@ df <- df %>%
 
 We are getting rid of the late 1999 data and beginning of 2024 data.
 
+```{r}
+df_bes <- df[df$Species == "BES", ]
+
+# Vérifier la structure des données pour s'assurer que 'Date' est bien de type Date
+str(df_bes)
+
+# Création du graphique avec ggplot2
+ggplot(df_bes, aes(x = Date, y = LandingsKG)) +
+  geom_line() +
+  labs(x = "Date", y = "Landings KG", title = "Évolution des débarquements de l'espèce BES")
+
+summary(df[df$Species == "BES", ])
+```
+
 # Create time series for each species
 
 We will create a `ts_list()` , a list of lists, that contains the time-series of each species of the data set. The frequency is **365** because we are dealing with daily data.
+
+Also, because for each
 
 ```{r}
 # Get the list of unique species
@@ -408,7 +425,7 @@ We will try to take both of them into account.
 ### BestSubSet Method
 
 ```{r}
-leaps <- regsubsets(ANE ~ .,data= train, nbest=1, method=c("exhaustive"))
+leaps <- regsubsets(BES ~ .,data= train, nbest=1, method=c("exhaustive"))
 leaps
 res.sum <- summary(leaps) 
 data.frame(Adj.R2=which.max(res.sum$adjr2),
@@ -422,7 +439,9 @@ plot(leaps, scale = "bic", main = "BIC")
 
 ```
 
-it seems that the following 9 variables are chosen by our 3 selection criteria: `FOX, GUX, JOD, MNZ, PAC, SQZ, SRX, ZZZ.`
+2 out 3 criterias are proposing the same 3 variables which are:`MAX, POD, SBX`
+
+The last criteria *(BIC)* is proposing only one variable: `SBX`
 
 ### Gets Method
 
@@ -439,7 +458,7 @@ variables <- colnames(mX)
 VRAI <- TRUE
 
 while (VRAI) {
-  modele_arx <- arx(y, mc = TRUE, ar = 1, mxreg = mX, vcov.type = "ordinary")
+  modele_arx <- arx(y, ar = 1, mxreg = mX, vcov.type = "ordinary")
   
   p_values <- modele_arx[["mean.results"]][["p-value"]][-c(1, 2)] # Exclure la constante et AR(1)
   max_p_value <- max(p_values)
@@ -460,36 +479,25 @@ modele_gets <- getsm(arx_final)
 str(mX)
 ```
 
-According to the results we should have 10 variables in our models: `BZX, FIN, FOX, GUX, JOD, MNZ, PAC, SBA, SQZ, SRX.`
+According to the results we should have 2 variables in our models: `MAX, SBX`
 
-Note that p\<0.05 for the Ljung-Box ARCH(1) which means that we have probably conditional heteroskedasticity. Most machine learning and econometric forecasting models assume that the residuals (errors) are homoscedastic, meaning they have constant variance over time. The presence of ARCH effects violates this assumption, and using the selected variables without accounting for heteroskedasticity can lead to biased and inefficient model estimates.
+[So we have three choices:]{.underline}
 
-[Let's test that with different tests:]{.underline}
+-   `MAX, POD, SBX`
+
+-   `MAX, SBX`
+
+-   `SBX`
+
+Let's try with `MAX, SBX`
 
 ```{r}
-# Fit a linear regression model
-model_fit <- lm(ANE ~ ., data = train)
+train2 <- train %>%
+  select("BES","MAX", "SBX")
 
-# Obtain residuals
-residuals <- residuals(model_fit)
-
-# Engle's LM test for ARCH effects
-arch_test <- ArchTest(residuals, lags = 1)
-print(arch_test)
-
-# Breusch-Pagan test for heteroskedasticity
-bp_test <- bptest(model_fit)
-print(bp_test)
-
-# Ljung-Box portmanteau test for ARCH effects
-squared_residuals <- residuals^2
-ljung_box_arch <- Box.test(squared_residuals, lag = 1, type = "Ljung-Box")
-print(ljung_box_arch)
+test2 <- test %>%
+  select("BES","MAX", "SBX")
 ```
-
-All three tests provide strong evidence against the assumption of constant variance (homoscedasticity) and suggest the presence of ARCH effects (conditional heteroskedasticity) in our data.
-
-We'll continue our analysis and apply machine learning and econometric models, but bear in mind that the results are potentially biased for these reasons.
 
 ## ARX with Get
 
@@ -497,16 +505,17 @@ We'll continue our analysis and apply machine learning and econometric models, b
 set.seed(123)
 n <- nrow(df)
 train_size <- round(0.8 * n)
-train_data <- df[1:train_size, 2:ncol(df)]
-test_data <- df[(train_size+1):n, 2:ncol(df)]
-y_real <- test_data$ANE
+train_data <- df[1:train_size, 2:ncol(train2)]
+test_data <- df[(train_size+1):n, 2:ncol(test2)]
+
+y_real <- test_data$BES
 
 
-mX_train <- data.matrix(train_data[,!names(train_data) %in% c("ANE", "DCP")]) 
-mX_test <- data.matrix(test_data[,!names(train_data) %in% c("ANE", "DCP")])
+mX_train <- data.matrix(train_data)
+mX_test <- data.matrix(test_data)
 
-y_train <- train_data$ANE
-y_test <- test_data$ANE
+y_train <- train_data$BES
+y_test <- test_data$BES
 
 model <- arx(y_train, mc = TRUE, ar = 1, mxreg = mX_train, vcov.type = "ordinary")
 n_test <- nrow(test_data)
