@@ -1,7 +1,4 @@
 ---
-title: "README"
-author: "Noa LE ROUX"
-date: "2024-06-28"
 output: github_document
 ---
 
