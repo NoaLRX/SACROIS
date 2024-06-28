@@ -2,7 +2,7 @@
 title: "README"
 author: "Noa LE ROUX"
 date: "2024-06-28"
-output: html_document
+output: github_document
 ---
 
 # Optimization of IAM forecasting model inputs
