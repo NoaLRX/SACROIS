@@ -1,6 +1,13 @@
 ---
 title: "forecasting"
-format: gfm
+format: 
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
+    code-fold: false
 editor: visual
 execute:
   echo: true
