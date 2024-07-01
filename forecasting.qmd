@@ -41,7 +41,7 @@ print(length(unique(df$X3A_CODE))) # 44 species
 df$DATE_SEQ <- as.Date(df$DATE_SEQ)
 str(df)
 
-df <- df %>%
+df_original <- df %>%
   rename("Date" = "DATE_SEQ") %>%
   rename("Species" = "X3A_CODE") %>%
   rename("LandingsKG" = "QUANT_POIDS_VIF_MOYENNE") %>%
@@ -233,11 +233,11 @@ Now, let's take care of stationarity. Most of the forecasting models we are goin
 
 Note that for this test we have:
 
--   H0: série non stationnaire (possède une racine unitaire)
+-   H0: not stationarty
 
--   H1: série stationnaire (n'en possède pas)
+-   H1: stationary
 
--   if p\<0.05 : the serie is stationary
+-   if p\<0.05 : the serie is stationary (H1)
 
 ```{r}
 #| warning: false
@@ -372,6 +372,15 @@ The forecasting models can't perform with either a training or testing base full
 
 ```{r}
 df <- read.csv("Data/data_clean.csv")
+
+df_original<- read.csv("Data/sacrois_complete.csv")
+df_original$DATE_SEQ <- as.Date(df_original$DATE_SEQ)
+df_original <- df_original %>%
+  rename("Date" = "DATE_SEQ") %>%
+  rename("Species" = "X3A_CODE") %>%
+  rename("LandingsKG" = "QUANT_POIDS_VIF_MOYENNE") %>%
+  rename("LandingsEUR" = "MONTANT_EUROS_MOYENNE")%>%
+  filter(Date >= "2001-01-01" & Date < "2024-01-01")
 ```
 
 ```{r}
@@ -416,14 +425,45 @@ train <- df[1:train_size, 2:ncol(df)] # Get rid of "Date"
 test <- df[(train_size+1):n, 2:ncol(df)] # Get rid of "Date"
 ```
 
-# Forecasting: BES
+So we now try to forecast the following time series:
 
-Let's start the variable selection process with `BES` as our $Y_t$
+```{r}
+names(df[,2:ncol(df)])
+```
+
+Warning: we can't forecast each of them, because some have mostly 0's in the testing base, for example with `BES`:
+
+```{r}
+ggplot(df, aes(x = as.Date(Date), y = BES)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
+    annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
+  labs(title = "BES Evolution", x = "Date", y = "BES") +
+  theme_minimal()
+
+# FOCUS ON 80%
+df_filtered <- df %>% 
+  filter(Date >= as.Date("2019-03-14") & Date <= as.Date("2023-12-31"))
+
+# Créer le graphique avec les données filtrées
+ggplot(df_filtered, aes(x = as.Date(Date), y = BES)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
+    annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
+  labs(title = "BES for the test base", x = "Date", y = "BES") +
+  theme_minimal()
+```
+
+We can clearly see that the testing base (after the 80% red line) is mostly filled with 0's, this is clearly not forecastle, and there is no point in doing that.
+
+# Forecasting: BZX
+
+Let's start the variable selection process with `BZX` as our $Y_t$
 
 Let's look at our variable first:
 
 ```{r}
-ggplot(df, aes(x = as.Date(Date), y = BSS)) +
+ggplot(df, aes(x = as.Date(Date), y = BZX)) +
   geom_line() +
   geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
     annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
@@ -437,32 +477,32 @@ df_filtered <- df %>%
   filter(Date >= as.Date("2019-03-14") & Date <= as.Date("2023-12-31"))
 
 # Créer le graphique avec les données filtrées
-ggplot(df_filtered, aes(x = as.Date(Date), y = BSS)) +
+ggplot(df_filtered, aes(x = as.Date(Date), y = BZX)) +
   geom_line() +
   geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
     annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
-  labs(title = "BES for the test base", x = "Date", y = "BES") +
+  labs(title = "BES for the test base", x = "Date", y = "BZX") +
   theme_minimal()
 ```
 
 ```{r}
-# Filtrer les données entre 2010 et 2012
+
 df_filtered <- df %>% 
   filter(Date >= as.Date("2010-12-01") & Date <= as.Date("2011-08-31"))
 
 # Créer le graphique avec les données filtrées
-ggplot(df_filtered, aes(x = as.Date(Date), y = BES)) +
+ggplot(df_filtered, aes(x = as.Date(Date), y = BZX)) +
   geom_line() +
-  labs(title = "BES Evolution 2010-12-01 to 2011-08-31", x = "Date", y = "BES") +
+  labs(title = "BZX Evolution 2010-12-01 to 2011-08-31", x = "Date", y = "BZX") +
   theme_minimal()
 
 df_filtered <- df %>% 
   filter(Date >= as.Date("2017-12-01") & Date <= as.Date("2018-01-31"))
 
 # Créer le graphique avec les données filtrées
-ggplot(df_filtered, aes(x = as.Date(Date), y = BES)) +
+ggplot(df_filtered, aes(x = as.Date(Date), y = BZX)) +
   geom_line() +
-  labs(title = "BES Evolution 2019-12-01 to 2020-05-31", x = "Date", y = "BES") +
+  labs(title = "BZX Evolution 2019-12-01 to 2020-05-31", x = "Date", y = "BZX") +
   theme_minimal()
 ```
 
