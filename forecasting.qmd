@@ -368,6 +368,8 @@ But first, there is one problem. Some species have long period with no data at a
 
 The forecasting models can't perform with either a training or testing base full of 0's.
 
+## Loading clean dataframe
+
 ```{r}
 df <- read.csv("Data/data_clean.csv")
 ```
@@ -384,7 +386,7 @@ constant_column_names <- names(constant_columns)[constant_columns]
 constant_column_names
 ```
 
-We have to get rid of `DCP` because it's constant
+We have to get rid of `DCP` because it woud be a constant value for the testing base of our models, which is not something we want to see.
 
 ```{r}
 n <- nrow(df)
@@ -399,7 +401,7 @@ constant_column_names
 
 ```
 
-We have to get rid of `ANE, DEX, DPS, FIN, JLX, PEN, WEX, WHB` because it's constant
+We have to get rid of `ANE, DEX, DPS, FIN, JLX, PEN, WEX, WHB` because it's constant as well.
 
 ```{r}
 df <- df %>%
@@ -417,6 +419,54 @@ test <- df[(train_size+1):n, 2:ncol(df)] # Get rid of "Date"
 # Forecasting: BES
 
 Let's start the variable selection process with `BES` as our $Y_t$
+
+Let's look at our variable first:
+
+```{r}
+ggplot(df, aes(x = as.Date(Date), y = BSS)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
+    annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
+  labs(title = "BES Evolution", x = "Date", y = "BES") +
+  theme_minimal()
+
+```
+
+```{r}
+df_filtered <- df %>% 
+  filter(Date >= as.Date("2019-03-14") & Date <= as.Date("2023-12-31"))
+
+# Créer le graphique avec les données filtrées
+ggplot(df_filtered, aes(x = as.Date(Date), y = BSS)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date("2019-03-14"), linetype = "dashed", color = "red") +
+    annotate("text", x = as.Date("2019-03-14"), y = 80, label = "80%", color = "red", vjust = -0.5) +
+  labs(title = "BES for the test base", x = "Date", y = "BES") +
+  theme_minimal()
+```
+
+```{r}
+# Filtrer les données entre 2010 et 2012
+df_filtered <- df %>% 
+  filter(Date >= as.Date("2010-12-01") & Date <= as.Date("2011-08-31"))
+
+# Créer le graphique avec les données filtrées
+ggplot(df_filtered, aes(x = as.Date(Date), y = BES)) +
+  geom_line() +
+  labs(title = "BES Evolution 2010-12-01 to 2011-08-31", x = "Date", y = "BES") +
+  theme_minimal()
+
+df_filtered <- df %>% 
+  filter(Date >= as.Date("2017-12-01") & Date <= as.Date("2018-01-31"))
+
+# Créer le graphique avec les données filtrées
+ggplot(df_filtered, aes(x = as.Date(Date), y = BES)) +
+  geom_line() +
+  labs(title = "BES Evolution 2019-12-01 to 2020-05-31", x = "Date", y = "BES") +
+  theme_minimal()
+```
+
+We can see that there are some huge peaks and a lot of 0s, it's going to be very hard to predict.
 
 ## Variable selections
 
@@ -525,8 +575,15 @@ p_arxget <- as.numeric(p_arxget)
 
 # Plot
 plot(y_real, type = "l", col = "black", lwd = 2, ylim = range(c(y_real)))
-lines(p_arxget, col = "red", lwd = 2)
+lines(p_arxget, col = "red", lwd = 3)
+lines(y_real, col = "black", lwd = 2)
 
+# Compute RMSE
 rmse <- sqrt(mean((y_real - p_arxget)^2, na.rm = TRUE))
 print(paste("RMSE :", rmse)) 
+
+smape <- mean(2 * abs(y_real - p_arxget) / (abs(y_real) + abs(p_arxget))) * 100
+print(paste("SMAPE:", smape, "%"))
 ```
+
+## ARX
