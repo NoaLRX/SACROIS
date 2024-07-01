@@ -30,18 +30,19 @@ library(lmtest)
 library(stats)
 library(FinTS)
 library(ggplot2)
+library(plotly)
 ```
 
 Let's clean the data:
 
 ```{r}
-df<- read.csv("Data/sacrois_complete.csv")
-print(unique(df$X3A_CODE))
-print(length(unique(df$X3A_CODE))) # 44 species
-df$DATE_SEQ <- as.Date(df$DATE_SEQ)
-str(df)
+df_original<- read.csv("Data/sacrois_complete.csv")
+print(unique(df_original$X3A_CODE))
+print(length(unique(df_original$X3A_CODE))) # 44 species
+df_original$DATE_SEQ <- as.Date(df_original$DATE_SEQ)
+str(df_original)
 
-df_original <- df %>%
+df_original <- df_original %>%
   rename("Date" = "DATE_SEQ") %>%
   rename("Species" = "X3A_CODE") %>%
   rename("LandingsKG" = "QUANT_POIDS_VIF_MOYENNE") %>%
@@ -51,20 +52,6 @@ df_original <- df %>%
 
 We are getting rid of the late 1999 data and beginning of 2024 data.
 
-```{r}
-df_bes <- df[df$Species == "BES", ]
-
-# Vérifier la structure des données pour s'assurer que 'Date' est bien de type Date
-str(df_bes)
-
-# Création du graphique avec ggplot2
-ggplot(df_bes, aes(x = Date, y = LandingsKG)) +
-  geom_line() +
-  labs(x = "Date", y = "Landings KG", title = "Évolution des débarquements de l'espèce BES")
-
-summary(df[df$Species == "BES", ])
-```
-
 # Create time series for each species
 
 We will create a `ts_list()` , a list of lists, that contains the time-series of each species of the data set. The frequency is **365** because we are dealing with daily data.
@@ -73,7 +60,7 @@ Also, because for each
 
 ```{r}
 # Get the list of unique species
-species_list <- unique(df$Species)
+species_list <- unique(df_original$Species)
 
 # Define the exact date range we want
 start_date <- as.Date("2000-01-01")
@@ -86,7 +73,7 @@ date_seq <- seq(start_date, end_date, by = "day")
 ts_list <- list()
 for (species in species_list) {
   # Filter data for the current species and aggregate by date
-  species_data <- df %>% 
+  species_data <- df_original %>% 
     filter(Species == species) %>% 
     group_by(Date) %>%
     summarize(LandingsKG = sum(LandingsKG, na.rm = TRUE)) %>%
@@ -115,6 +102,89 @@ ts_names <- names(ts_list)
 
 # Print the names of the time series
 print(ts_names)
+```
+
+# Atypical points detection & correction
+
+As we can see in the following plot, there is some "weird" extremely high values. This is the case for most of our time series. These data points can be "atypical points" and need to be corrected for our forecasting models.
+
+```{r}
+df_bes <- df_original[df_original$Species == "BES", ]
+
+ggplot(df_bes, aes(x = Date, y = LandingsKG)) +
+  geom_line() +
+  labs(x = "Date", y = "Landings KG", title = "Évolution des débarquements de l'espèce BES")
+
+summary(df_original[df_original$Species == "BES", ])
+```
+
+```{r}
+ts_BES <- ts_list$ts_BES
+autoplot(ts_BES)
+tsoutliers(ts_BES)
+outliers <- tsoutliers(ts_BES)
+
+plot <- autoplot(tsclean(ts_BES), series="clean", color='red', lwd=1) +
+  autolayer(ts_BES, series="original", color='gray', lwd=1) +
+  geom_point(data = tsoutliers(ts_BES) %>% as.data.frame(),
+             aes(x=index, y=replacements), col='blue') +
+  labs(x = "Days", y = "BES Landings")
+
+ggplotly(plot)
+length(outliers$replacements)
+```
+
+The "full" red lines shows where a value was replaced. The blue line
+
+```{r}
+library(EnvStats)
+
+# Rosner test
+test <- rosnerTest(ts_BES,
+  k = 2
+)
+test$all.stats
+```
+
+```{r}
+ts_BES <- ts_list$ts_BES
+# lower_bound
+lower_bound <- median(ts_BES) - 2 * mad(ts_BES)
+lower_bound
+# upper_bound
+upper_bound <- median(ts_BES) + 2 * mad(ts_BES)
+upper_bound
+# outlier
+outlier_ind <- which(ts_BES < lower_bound | ts_BES > upper_bound)
+length(outlier_ind)
+```
+
+```{r}
+library(prophet)
+ts_BES <- ts_list$ts_BES
+data <- data.frame(ds = df$Date, y = as.numeric(ts_BES))
+m <- prophet(data)
+future <- make_future_dataframe(m, periods = 0)
+forecast <- predict(m, future)
+
+residuals <- data$y - forecast$yhat
+plot(residuals, type = "l", ylab = "Residuals", xlab = "Time")
+abline(h = 0, lty = 2)  # Add a horizontal line at 0
+
+plot(m, forecast) + add(m)
+m$changepoints
+forecast$anomalies
+```
+
+```{r}
+ts_BES <- ts_list$ts_BES
+library(zoo)
+window_size <- 30  # Ajustez selon la nature de vos données
+roll_mean <- rollmean(ts_BES, k = window_size, fill = NA)
+roll_sd <- rollapply(ts_BES, width = window_size, FUN = sd, fill = NA)
+z_scores <- abs((ts_BES - roll_mean) / roll_sd)
+outliers_index <- which(z_scores > 3)
+print(outliers_index)
 ```
 
 # Seasonality Detection
